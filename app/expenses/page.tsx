@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import EditExpense from '../components/EditExpense'
 
 type Expense = {
   id: string
   description: string
   amount: number
   category: string
+  date: string
   who_paid: string
 }
 
@@ -19,113 +21,115 @@ type Profile = {
 export default function Expenses() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
-  const [description, setDescription] = useState('')
-  const [amount, setAmount] = useState('')
-  const [category, setCategory] = useState('Food')
-  const [paidBy, setPaidBy] = useState('')
-  const [user, setUser] = useState<any>(null)
+  const [editing, setEditing] = useState<Expense | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
 
-  async function loadExpenses() {
-    const { data } = await supabase
-      .from('expenses')
-      .select('*')
-      .order('date', { ascending: false })
-
-    setExpenses(data || [])
-  }
-
-  async function loadProfiles() {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, email')
-
-    setProfiles(data || [])
-  }
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user))
-    loadExpenses()
-    loadProfiles()
+    loadAll()
   }, [])
 
-  async function addExpense() {
-    if (!description || !amount || !user) return
+  async function loadAll() {
+    const [{ data: expenses }, { data: profiles }] = await Promise.all([
+      supabase.from('expenses').select('*').order('date', { ascending: false }),
+      supabase.from('profiles').select('id, email'),
+    ])
 
-    await supabase.from('expenses').insert({
-      description,
-      amount: Number(amount),
-      category,
-      date: new Date().toISOString(),
-      who_paid: paidBy || user.id
-    })
-
-    setDescription('')
-    setAmount('')
-    setPaidBy('')
-    loadExpenses()
+    setExpenses(expenses || [])
+    setProfiles(profiles || [])
+    setLoading(false)
   }
 
-  async function editExpense(exp: Expense) {
-    const newAmount = prompt('New amount', exp.amount.toString())
-    if (!newAmount) return
+  async function saveEdit(changes: Partial<Expense>) {
+    if (!editing) return
 
     await supabase
       .from('expenses')
-      .update({ amount: Number(newAmount) })
-      .eq('id', exp.id)
+      .update(changes)
+      .eq('id', editing.id)
 
-    loadExpenses()
+    setEditing(null)
+    loadAll()
+  }
+  async function addExpense(changes: any) {
+  await supabase.from('expenses').insert({
+    ...changes,
+    date: new Date().toISOString().split('T')[0],
+  })
+
+  setCreating(false)
+  loadAll()
+}
+
+  if (loading) {
+    return <div style={{ padding: 40, color: '#999' }}>Loading…</div>
   }
 
   return (
-    <main style={{ padding: 40 }}>
-      <h1>💳 Expenses</h1>
-      <div style={{ paddingBottom: 80 }}>
+    <main style={{ maxWidth: 420, margin: '0 auto', padding: '16px 16px 80px' }}>
+      <h1 style={{ fontSize: 22, marginBottom: 16 }}>💳 Expenses</h1>
 
-      <input
-        placeholder="Dinner, groceries, Uber..."
-        value={description}
-        onChange={e => setDescription(e.target.value)}
-      />
+      {expenses.map(exp => {
+        const payer =
+          profiles.find(p => p.id === exp.who_paid)?.email || 'Unknown'
 
-      <input
-        type="number"
-        placeholder="Amount"
-        value={amount}
-        onChange={e => setAmount(e.target.value)}
-      />
+        return (
+          <div
+            key={exp.id}
+            onClick={() => setEditing(exp)}
+            style={{
+              padding: '14px 0',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              cursor: 'pointer',
+            }}
+          >
+            <div style={{ fontSize: 16 }}>{exp.description}</div>
+            <div style={{ fontSize: 13, color: '#aaa', marginTop: 4 }}>
+              €{exp.amount} · {exp.category}
+            </div>
+            <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+              Paid by {payer}
+            </div>
+          </div>
+        )
+      })}
 
-      <select value={category} onChange={e => setCategory(e.target.value)}>
-        <option>Food</option>
-        <option>Travel</option>
-        <option>Entertainment</option>
-        <option>Household</option>
-        <option>Other</option>
-      </select>
+      {editing && (
+        <EditExpense
+          expense={editing}
+          profiles={profiles}
+          onClose={() => setEditing(null)}
+          onSave={saveEdit}
+        />
+      )}
+      {creating && (
+  <EditExpense
+    profiles={profiles}
+    onClose={() => setCreating(false)}
+    onSave={addExpense}
+  />
+)}
 
-      <select value={paidBy} onChange={e => setPaidBy(e.target.value)}>
-        <option value="">Who paid?</option>
-        {profiles.map(p => (
-          <option key={p.id} value={p.id}>
-            {p.email}
-          </option>
-        ))}
-      </select>
-
-      <button onClick={addExpense}>Add Expense</button>
-
-      <ul style={{ marginTop: 20 }}>
-        {expenses.map(exp => (
-          <li key={exp.id}>
-            {exp.description} — €{exp.amount} — {exp.category} —{' '}
-            {profiles.find(p => p.id === exp.who_paid)?.email || 'Unknown'}
-            <button onClick={() => editExpense(exp)} style={{ marginLeft: 10 }}>
-              Edit
-            </button>
-          </li>
-        ))}
-      </ul>
-      </div>
+      <button
+  onClick={() => setCreating(true)}
+  style={{
+    position: 'fixed',
+    bottom: 90,
+    right: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    background: '#4ade80',
+    color: '#000',
+    fontSize: 28,
+    fontWeight: 600,
+    border: 'none',
+    zIndex: 150,
+  }}
+>
+  +
+</button>
     </main>
   )
 }

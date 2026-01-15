@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import EditShoppingItem from '../components/EditShoppingItem'
 
 type Item = {
   id: string
@@ -21,6 +22,8 @@ export default function Shopping() {
   const [newItem, setNewItem] = useState('')
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [editingItem, setEditingItem] = useState<Item | null>(null)
+
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -62,6 +65,20 @@ export default function Shopping() {
 
     loadAll()
   }
+  async function saveEdit(changes: any) {
+  if (!editingItem) return
+
+  await supabase
+    .from('shopping_list')
+    .update({
+      item_name: changes.name,
+      who_is_buying: changes.buyer
+    })
+    .eq('id', editingItem.id)
+
+  setEditingItem(null)
+  loadAll()
+}
 
   if (loading) {
     return (
@@ -123,22 +140,25 @@ export default function Shopping() {
 
           return (
             <div
-              key={item.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '14px 0',
-                borderBottom: '1px solid rgba(255,255,255,0.06)'
+                key={item.id}
+                    onClick={() => setEditingItem(item)}
+                    style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '14px 0',
+                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    cursor: 'pointer'
               }}
             >
               <input
                 type="checkbox"
                 checked={item.status}
                 onChange={(e) => toggleDone(item.id, e.target.checked)}
+                onClick={(e) => e.stopPropagation()}
                 style={{ width: 20, height: 20 }}
               />
-
+              <div style={{ color: '#555', fontSize: 18 }}>›</div>
               <div style={{ flex: 1 }}>
                 <div
                   style={{
@@ -158,6 +178,14 @@ export default function Shopping() {
           )
         })}
       </div>
+        {editingItem && (
+            <EditShoppingItem
+             item={editingItem}
+                profiles={profiles}
+                onClose={() => setEditingItem(null)}
+            onSave={saveEdit}
+            />
+        )}
     </main>
   )
 }
