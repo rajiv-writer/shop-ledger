@@ -1,31 +1,46 @@
-export const dynamic = 'force-dynamic'
+'use client'
 
-import { createClient } from '@/lib/supabase/server'
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
-export default async function Page() {
+export default function Page() {
   const supabase = createClient()
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [error, setError] = useState<string | null>(null)
 
-  const { data: transactions, error } = await supabase
-    .from('transactions')
-    .select('*')
-    .order('created_at', { ascending: false })
+  useEffect(() => {
+    async function loadTransactions() {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        setError('Failed to load entries')
+      } else {
+        setTransactions(data || [])
+      }
+    }
+
+    loadTransactions()
+  }, [])
 
   if (error) {
-    return <div>Failed to load entries</div>
+    return <div>{error}</div>
   }
 
   return (
     <main style={{ padding: 16 }}>
       <nav style={{ marginBottom: 16 }}>
-  <a href="/">Ledger</a> | <a href="/summary">Summary</a>
-</nav>
+        <a href="/">Ledger</a> | <a href="/summary">Summary</a>
+      </nav>
 
       <h1>Ledger Entries</h1>
 
       <a href="/add-entry">Add entry</a>
 
       <div style={{ marginTop: 16 }}>
-        {transactions?.map((t) => (
+        {transactions.map((t) => (
           <div
             key={t.id}
             style={{
