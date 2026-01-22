@@ -1,10 +1,6 @@
-console.log('SUPABASE URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-console.log('SUPABASE KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-
+export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-
-
 
 export default async function Page() {
   const supabase = createClient()
@@ -29,29 +25,32 @@ export default async function Page() {
           <div
             key={t.id}
             style={{
-              borderBottom: '1px solid #ddd',
-              padding: '8px 0',
+              borderLeft: `4px solid ${t.type === 'IN' ? 'green' : 'red'}`,
+              paddingLeft: 8,
+              marginBottom: 12,
             }}
           >
-            <div
-  key={t.id}
-  style={{
-    borderLeft: `4px solid ${t.type === 'IN' ? 'green' : 'red'}`,
-    paddingLeft: 8,
-    marginBottom: 12,
-  }}
->
             <div>
-              <strong>{t.type}</strong> — ₹{Number(t.amount).toLocaleString('en-IN')}
+              <strong>{t.type}</strong> — ₹
+              {Number(t.amount).toLocaleString('en-IN')}
             </div>
+
             <div>{t.counterparty}</div>
+
+            {t.category && (
+              <div style={{ fontSize: 12, color: '#555' }}>
+                {t.category}
+              </div>
+            )}
+
             <div>{t.description}</div>
+
             <div style={{ fontSize: 12, color: '#666' }}>
-              new Date(t.created_at).toLocaleDateString('en-IN', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-})
+              {new Date(t.created_at).toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              })}
             </div>
           </div>
         ))}
