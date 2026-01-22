@@ -16,6 +16,10 @@ export default async function Page() {
 
   return (
     <main style={{ padding: 16 }}>
+      <nav style={{ marginBottom: 16 }}>
+  <a href="/">Ledger</a> | <a href="/summary">Summary</a>
+</nav>
+
       <h1>Ledger Entries</h1>
 
       <a href="/add-entry">Add entry</a>
